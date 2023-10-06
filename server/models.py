@@ -14,7 +14,7 @@ metadata = MetaData(
 db = SQLAlchemy(metadata=metadata)
 
 
-class Game(db.Model):
+class Game(db.Model, SerializerMixin):
     __tablename__ = "games"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -26,12 +26,16 @@ class Game(db.Model):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     reviews = db.relationship("Review", back_populates="game")
+    # Don't need creator if the default behavior suits your needs
+    users = association_proxy("reviews", "user", creator= lambda user_obj : Review(user=user_obj))
+
+    serialize_rules = ("-reviews.game",)
 
     def __repr__(self):
         return f"<Game {self.title} for {self.platform}>"
 
 
-class Review(db.Model):
+class Review(db.Model, SerializerMixin):
     __tablename__ = "reviews"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -46,11 +50,13 @@ class Review(db.Model):
     game = db.relationship("Game", back_populates="reviews")
     user = db.relationship("User", back_populates="reviews")
 
+    serialize_rules = ("-game.reviews", "-user.reviews")
+
     def __repr__(self):
         return f"<Review ({self.id}) of {self.game}: {self.score}/10>"
 
 
-class User(db.Model):
+class User(db.Model, SerializerMixin):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -60,6 +66,11 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     reviews = db.relationship("Review", back_populates="user")
+
+    # Don't need creator if the default behavior suits your needs
+    games = association_proxy("reviews", "game")
+
+    serialize_rules = ("-reviews.user", )
 
     def __repr__(self):
         return f"<User ({self.id}) {self.name}>"
